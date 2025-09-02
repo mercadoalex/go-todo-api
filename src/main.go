@@ -20,6 +20,17 @@ func main() {
 	log.Println("Connected to SQLite database todo.db") // Log a message if successful
 	defer db.Close()
 
+	_, err = db.Exec(`
+	    CREATE TABLE IF NOT EXISTS tasks (
+	        id INTEGER PRIMARY KEY AUTOINCREMENT,
+	        title TEXT NOT NULL,
+	        completed BOOLEAN NOT NULL DEFAULT 0
+	    )
+	`)
+	if err != nil {
+		log.Fatal("Failed to create tasks table:", err)
+	}
+
 	// Create a new router using gorilla/mux, which helps manage URL routes
 	router := mux.NewRouter()
 

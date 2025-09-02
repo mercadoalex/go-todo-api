@@ -4,14 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv" // For converting between string and int
-	"sync"
-)
 
-// Global variables for in-memory storage and concurrency control
-var (
-	tasks  = make(map[int]Task) // Stores tasks using int IDs as keys
-	nextID = 1                  // Next available unique ID for new tasks
-	mu     sync.Mutex           // Mutex to ensure thread-safe access to the tasks map
+	"github.com/gorilla/mux"
 )
 
 // AddTask handles POST requests to create a new task in the SQLite database
@@ -35,7 +29,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	}
 	// Get the ID of the newly inserted task
 	id, _ := res.LastInsertId()
-	task.ID = strconv.FormatInt(id, 10)          // Convert int64 to string for Task.ID
+	task.ID = int(id)                            // Assign int64 to int for Task.ID
 	RespondWithJSON(w, http.StatusCreated, task) // Respond with the created task as JSON
 }
 
@@ -64,16 +58,16 @@ func GetTasks(w http.ResponseWriter, r *http.Request) {
 
 // UpdateTask handles PUT requests to update an existing task in the SQLite database
 func UpdateTask(w http.ResponseWriter, r *http.Request) {
-	var task Task
-	// Decode the JSON request body into a Task struct
-	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		HandleError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	// Convert string ID to int for database query
-	id, err := strconv.Atoi(task.ID)
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		HandleError(w, http.StatusBadRequest, "Invalid task ID")
+		return
+	}
+	var task Task
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		HandleError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	// Update the task in the database
@@ -84,10 +78,11 @@ func UpdateTask(w http.ResponseWriter, r *http.Request) {
 	}
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected == 0 {
-		http.Error(w, "Task not found", http.StatusNotFound) // Respond with 404 if the task doesn't exist
+		http.Error(w, "Task not found", http.StatusNotFound)
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, task) // Respond with the updated task as JSON
+	task.ID = id // Set the correct ID in the response
+	RespondWithJSON(w, http.StatusOK, task)
 }
 
 // DeleteTask handles DELETE requests to remove a specific task by ID from the SQLite database

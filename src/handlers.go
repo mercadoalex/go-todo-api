@@ -44,13 +44,10 @@ func GetTasks(w http.ResponseWriter, r *http.Request) {
 	var tasks []Task
 	for rows.Next() {
 		var task Task
-		var completed int
-		// Scan each row into a Task struct
-		if err := rows.Scan(&task.ID, &task.Title, &completed); err != nil {
+		if err := rows.Scan(&task.ID, &task.Title, &task.Completed); err != nil {
 			HandleError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		task.Completed = completed == 1 // Convert SQLite integer to Go bool
 		tasks = append(tasks, task)
 	}
 	RespondWithJSON(w, http.StatusOK, tasks) // Respond with all tasks as JSON
@@ -87,8 +84,9 @@ func UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 // DeleteTask handles DELETE requests to remove a specific task by ID from the SQLite database
 func DeleteTask(w http.ResponseWriter, r *http.Request) {
-	idStr := r.URL.Query().Get("id") // Get the task ID from the query parameters (?id=)
-	id, err := strconv.Atoi(idStr)   // Convert id from string to int for database query
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		HandleError(w, http.StatusBadRequest, "Invalid task ID")
 		return

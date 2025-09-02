@@ -17,9 +17,15 @@ var (
 // AddTask handles POST requests to create a new task
 func AddTask(w http.ResponseWriter, r *http.Request) {
 	var task Task
-	// Decode the JSON request body into a Task struct
+	// Try to decode the JSON request body into a Task struct
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		HandleError(w, http.StatusBadRequest, err.Error()) // Respond with 400 Bad Request if decoding fails
+		// Error handling: If decoding fails, respond with 400 Bad Request and the error message
+		HandleError(w, http.StatusBadRequest, "Invalid JSON: "+err.Error())
+		return
+	}
+	// Additional error handling example: Check if the title is empty
+	if task.Title == "" {
+		HandleError(w, http.StatusBadRequest, "Task title cannot be empty")
 		return
 	}
 	mu.Lock()                                    // Lock the mutex to safely modify shared data

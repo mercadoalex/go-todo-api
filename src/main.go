@@ -1,13 +1,25 @@
 package main
 
 import (
+	"database/sql"
 	"log"      // For logging server status and errors
 	"net/http" // Provides HTTP server and client implementations
 
 	"github.com/gorilla/mux" // Third-party package for advanced HTTP routing
+	_ "github.com/mattn/go-sqlite3"
 )
 
+var db *sql.DB
+
 func main() {
+	var err error
+	db, err = sql.Open("sqlite3", "./todo.db")
+	if err != nil {
+		log.Fatal(err) // Log and exit if there is an error opening the database
+	}
+	log.Println("Connected to SQLite database todo.db") // Log a message if successful
+	defer db.Close()
+
 	// Create a new router using gorilla/mux, which helps manage URL routes
 	router := mux.NewRouter()
 

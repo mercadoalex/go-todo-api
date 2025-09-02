@@ -3,67 +3,77 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strconv" // Import strconv for int-to-string conversion
 	"sync"
 )
 
+// Global variables for in-memory storage and concurrency control
 var (
-	tasks  = make(map[int]Task)
-	nextID = 1
-	mu     sync.Mutex
+	tasks  = make(map[int]Task) // Stores tasks using int IDs as keys
+	nextID = 1                  // Next available unique ID for new tasks
+	mu     sync.Mutex           // Mutex to ensure thread-safe access to the tasks map
 )
 
-type Task struct {
-	ID        int    `json:"id"`
-	Title     string `json:"title"`
-	Completed bool   `json:"completed"`
-}
-
+// AddTask handles POST requests to create a new task
 func AddTask(w http.ResponseWriter, r *http.Request) {
 	var task Task
+	// Decode the JSON request body into a Task struct
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		HandleError(w, err, http.StatusBadRequest)
+		HandleError(w, http.StatusBadRequest, err.Error()) // Respond with 400 Bad Request if decoding fails
 		return
 	}
-	mu.Lock()
-	task.ID = nextID
-	nextID++
-	tasks[task.ID] = task
-	mu.Unlock()
-	RespondWithJSON(w, http.StatusCreated, task)
+	mu.Lock()                                    // Lock the mutex to safely modify shared data
+	task.ID = strconv.Itoa(nextID)               // Convert int nextID to string for Task.ID
+	tasks[nextID] = task                         // Store the new task in the map using int key
+	nextID++                                     // Increment the ID counter for the next task
+	mu.Unlock()                                  // Unlock the mutex after modification
+	RespondWithJSON(w, http.StatusCreated, task) // Respond with the created task as JSON
 }
 
+// GetTasks handles GET requests to retrieve all tasks
 func GetTasks(w http.ResponseWriter, r *http.Request) {
-	mu.Lock()
-	defer mu.Unlock()
-	RespondWithJSON(w, http.StatusOK, tasks)
+	mu.Lock()                                // Lock the mutex to safely read shared data
+	defer mu.Unlock()                        // Ensure the mutex is unlocked after the function returns
+	RespondWithJSON(w, http.StatusOK, tasks) // Respond with all tasks as JSON
 }
 
+// UpdateTask handles PUT requests to update an existing task
 func UpdateTask(w http.ResponseWriter, r *http.Request) {
 	var task Task
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		HandleError(w, err, http.StatusBadRequest)
+		HandleError(w, http.StatusBadRequest, err.Error()) // Respond with 400 Bad Request if decoding fails
 		return
 	}
-	mu.Lock()
-	defer mu.Unlock()
-	if _, exists := tasks[task.ID]; !exists {
-		http.Error(w, "Task not found", http.StatusNotFound)
+	// Convert string ID to int for map lookup
+	id, err := strconv.Atoi(task.ID)
+	if err != nil {
+		HandleError(w, http.StatusBadRequest, "Invalid task ID")
 		return
 	}
-	tasks[task.ID] = task
-	RespondWithJSON(w, http.StatusOK, task)
+	mu.Lock()         // Lock the mutex to safely modify shared data
+	defer mu.Unlock() // Ensure the mutex is unlocked after the function returns
+	if _, exists := tasks[id]; !exists {
+		http.Error(w, "Task not found", http.StatusNotFound) // Respond with 404 if the task doesn't exist
+		return
+	}
+	tasks[id] = task                        // Update the task in the map
+	RespondWithJSON(w, http.StatusOK, task) // Respond with the updated task as JSON
 }
 
+// DeleteTask handles DELETE requests to remove a specific task by ID
 func DeleteTask(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-	mu.Lock()
-	defer mu.Unlock()
-	for k := range tasks {
-		if k == id {
-			delete(tasks, k)
-			RespondWithJSON(w, http.StatusNoContent, nil)
-			return
-		}
+	idStr := r.URL.Query().Get("id") // Get the task ID from the query parameters (?id=)
+	id, err := strconv.Atoi(idStr)   // Convert id from string to int for comparison
+	if err != nil {
+		HandleError(w, http.StatusBadRequest, "Invalid task ID")
+		return
 	}
-	http.Error(w, "Task not found", http.StatusNotFound)
+	mu.Lock()         // Lock the mutex to safely modify shared data
+	defer mu.Unlock() // Ensure the mutex is unlocked after the function returns
+	if _, exists := tasks[id]; exists {
+		delete(tasks, id)                             // Delete the task from the map
+		RespondWithJSON(w, http.StatusNoContent, nil) // Respond with 204 No Content
+		return
+	}
+	http.Error(w, "Task not found", http.StatusNotFound) // Respond with 404 if the task doesn't exist
 }

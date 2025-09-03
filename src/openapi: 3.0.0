@@ -1,76 +1,80 @@
-openapi: 3.0.0
+openapi: 3.0.0 # Specifies the OpenAPI version being used
+
 info:
-  title: Go Todo API
-  version: 1.0.0
+  title: Go Todo API # The name of your API
+  version: 1.0.0    # The version of your API
+
 paths:
   /tasks:
     get:
-      summary: Get all tasks
+      summary: Get all tasks # Short description of the endpoint
       responses:
         '200':
-          description: List of tasks
+          description: List of tasks # What the response means
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Task'
+                  $ref: '#/components/schemas/Task' # Each item is a Task object
     post:
-      summary: Create a new task
+      summary: Create a new task # Short description of the endpoint
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Task'
+              $ref: '#/components/schemas/Task' # The request body must be a Task object
       responses:
         '201':
-          description: Task created
+          description: Task created # What the response means
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
+                $ref: '#/components/schemas/Task' # The response body is the created Task object
+
   /tasks/{id}:
     put:
-      summary: Update a task
+      summary: Update a task # Short description of the endpoint
       parameters:
         - name: id
           in: path
           required: true
           schema:
-            type: integer
+            type: integer # The ID must be an integer
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Task'
+              $ref: '#/components/schemas/Task' # The request body must be a Task object
       responses:
         '200':
-          description: Task updated
+          description: Task updated # What the response means
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Task'
+                $ref: '#/components/schemas/Task' # The response body is the updated Task object
     delete:
-      summary: Delete a task
+      summary: Delete a task # Short description of the endpoint
       parameters:
         - name: id
           in: path
           required: true
           schema:
-            type: integer
+            type: integer # The ID must be an integer
       responses:
         '204':
-          description: Task deleted
+          description: Task deleted # No content is returned on success
+
 components:
   schemas:
     Task:
-      type: object
+      type: object # The Task object definition
       properties:
         id:
-          type: integer
+          type: integer # Unique identifier for the task
         title:
-          type: string
+          type: string  # Title or description of the task
         completed:
-          type: boolean
+          type: boolean # Status: true if the task is done, false otherwise
